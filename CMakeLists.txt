@@ -69,4 +69,7 @@ else()
   target_include_directories(${TARGET_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../mslang/src
   )
+
+  # Emscripten WebSocket library for the proxy implementation.
+  target_link_options(${TARGET_NAME} PUBLIC -lwebsocket.js)
 endif()
