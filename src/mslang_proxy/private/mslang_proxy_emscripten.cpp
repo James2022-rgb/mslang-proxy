@@ -5,6 +5,8 @@
 #include "mbase/public/log.h"
 #include "mbase/public/platform.h"
 
+#include "mslang/public/slang_cache.h"
+
 #if MBASE_PLATFORM_WEB
 
 // c++ headers ------------------------------------------
@@ -323,6 +325,49 @@ std::optional<std::string> CompileSlangToWgsl(
 
   auto const& bytes = result.value();
   return std::string(reinterpret_cast<char const*>(bytes.data()), bytes.size());
+}
+
+// ----------------------------------------------------------------------------------------------------
+// Slang module cache
+//
+
+void InitializeSlangCache(std::string_view) {
+  // No-op on Emscripten.
+}
+
+CompileBatchResult CompileSlangToSpirvBatch(
+  char const* root_module_parent_path,
+  char const* root_module_name,
+  mslang::ISlangCodeProvider* code_provider,
+  mslang::ISlangDependencyIncludeHandler* include_handler,
+  char const* capability_name,
+  std::span<char const* const> entry_point_names
+) {
+  CompileBatchResult result;
+  result.spirv.resize(entry_point_names.size());
+
+  // Get source code from provider.
+  std::string slang_code;
+  uint64_t ts = 0;
+  code_provider->ProvideSlangCode(
+    root_module_parent_path, root_module_name, &slang_code, ts);
+
+  // Wrap include_handler into SlangIncludeHandler.
+  mslang::SlangIncludeHandler handler =
+    [include_handler](char const* path)
+      -> std::optional<mslang::SlangIncludeResult> {
+    mslang::SlangIncludeResult r;
+    if (!include_handler->HandleInclude(path, r)) return std::nullopt;
+    return r;
+  };
+
+  for (size_t i = 0; i < entry_point_names.size(); ++i) {
+    result.spirv[i] = CompileSlangToSpirv(
+      root_module_name, root_module_parent_path,
+      slang_code.c_str(), handler,
+      capability_name, entry_point_names[i]);
+  }
+  return result;
 }
 
 } // namespace mslang_proxy
