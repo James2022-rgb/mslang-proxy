@@ -254,6 +254,7 @@ CompileBatchResult CompileSlangToSpirvBatch(
     mslang::SlangSessionWrmKey key {
       .root_module_parent_path = root_module_parent_path,
       .root_module_name = root_module_name,
+      .preprocessor_macros = {},
     };
     if (!cache->RequestSlangSessionWithRootModule(
           key, nullptr, code_provider, include_handler, &session)) {
